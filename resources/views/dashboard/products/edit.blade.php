@@ -11,7 +11,7 @@
         <flux:badge color="red" class="mb-3 w-full">{{ session()->get('errorMessage') }}</flux:badge>
     @endif
 
-    <form action="{{ route('dashboard.products.update', $product->id) }}" method="post" enctype="multipart/form-data">
+    <form action="{{ route('products.update', $product->id) }}" method="post" enctype="multipart/form-data">
         @method('patch')
         @csrf
         
@@ -47,7 +47,7 @@
 
         <div class="mt-4">
             <flux:button type="submit" variant="primary">Update</flux:button>
-            <flux:link href="{{ route('dashboard.products.index') }}" variant="ghost" class="ml-3">Back</flux:link>
+            <flux:link href="{{ route('products.index') }}" variant="ghost" class="ml-3">Back</flux:link>
         </div>
     </form>
 </x-layouts.app>

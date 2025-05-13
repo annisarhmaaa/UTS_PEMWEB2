@@ -8,14 +8,14 @@
     <!-- Search and Add New Product Button -->
     <div class="flex justify-between items-center mb-6">
         <div class="w-full max-w-xs">
-            <form action="{{ route('dashboard.products.index') }}" method="get" class="flex items-center space-x-2">
+            <form action="{{ route('products.index') }}" method="get" class="flex items-center space-x-2">
                 @csrf
                 <flux:input icon="magnifying-glass" name="q" value="{{ $q }}" placeholder="Search Products" class="w-full" />
             </form>
         </div>
         <div>
             <flux:button icon="plus" class="bg-teal-600 hover:bg-teal-700 text-white">
-                <flux:link href="{{ route('dashboard.products.create') }}" variant="subtle">Add New Product</flux:link>
+                <flux:link href="{{ route('products.create') }}" variant="subtle">Add New Product</flux:link>
             </flux:button>
         </div>
     </div>
@@ -71,9 +71,9 @@
                             <flux:dropdown>
                                 <flux:button icon:trailing="chevron-down" class="bg-gray-200 hover:bg-gray-300">Actions</flux:button>
                                 <flux:menu>
-                                    <flux:menu.item icon="pencil" href="{{ route('dashboard.products.edit', $product->id) }}">Edit</flux:menu.item>
+                                    <flux:menu.item icon="pencil" href="{{ route('products.edit', $product->id) }}">Edit</flux:menu.item>
                                     <flux:menu.item icon="trash" variant="danger" onclick="event.preventDefault(); if(confirm('Are you sure?')) document.getElementById('delete-form-{{ $product->id }}').submit();">Delete</flux:menu.item>
-                                    <form id="delete-form-{{ $product->id }}" action="{{ route('dashboard.products.destroy', $product->id) }}" method="POST" class="hidden">
+                                    <form id="delete-form-{{ $product->id }}" action="{{ route('products.destroy', $product->id) }}" method="POST" class="hidden">
                                         @csrf
                                         @method('DELETE')
                                     </form>

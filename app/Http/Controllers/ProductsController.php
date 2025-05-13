@@ -4,11 +4,17 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Models\ProductCategory;
+use App\Models\Categories;
+use Illuminate\Support\Facades\Storage;
 
 class ProductsController extends Controller
 {
+    // menampilkan daftar produk dengan fitur pencarian
     public function index(Request $request)
     {
+            $q = $request->q;
+
         $products = Product::query()
             ->when($request->filled('q'), function ($query) use ($request) {
                 $query->where('name', 'like', '%' . $request->q . '%')
@@ -16,117 +22,108 @@ class ProductsController extends Controller
                       ->orWhere('sku', 'like', '%' . $request->q . '%');
             })
             ->paginate(10);
+        
 
-        return view('dashboard.products.index', [
-            'products' => $products,
-            'q' => $request->q
-        ]);
+        return view('dashboard.products.index', compact('products', 'q'));
+    
     }
-
+    //menampilkan form tambah produk
     public function create()
     {
-        return view('dashboard.products.create');
+        $categories = Categories::all();
+        return view('dashboard.products.create', compact('categories'));
     }
-
+ // menyimpan produk baru ke dalam database
     public function store(Request $request)
     {
-        $validator = \Validator::make($request->all(), [
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
             'slug' => 'required|string|max:255|unique:products,slug',
-            'description' => 'nullable|string',
             'sku' => 'required|string|max:50|unique:products,sku',
-            'price' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'product_category_id' => 'nullable|exists:product_categories,id',
-            'image' => 'nullable|image|max:2048',
-            'is_active' => 'boolean'
+            'description' => 'required|string',
+            'price' => 'required|numeric',
+            'stock' => 'required|integer',
+            'product_category_id' => 'required|exists:product_categories,id', 
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
         ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput()
-                ->with('errorMessage', 'Validasi Error, Silahkan lengkapi data terlebih dahulu');
-        }
-
-        $product = new Product;
-        $product->fill($request->only([
-            'name', 'slug', 'description', 'sku', 'price',
-            'stock', 'product_category_id', 'is_active'
-        ]));
+        $product = new Product();
+        $product->name = $validated['name'];
+        $product->slug = $validated['slug'];
+        $product->sku = $validated['sku'];
+        $product->description = $validated['description'];
+        $product->price = $validated['price'];
+        $product->stock = $validated['stock'];
+        $product->product_category_id = $validated['product_category_id'];
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '_' . $image->getClientOriginalName();
-            $imagePath = $image->storeAs('uploads/products', $imageName, 'public');
+            $imagePath = $request->file('image')->store('images/products', 'public');
             $product->image_url = $imagePath;
         }
 
-        $product->save();
+        $product->save(); //simpan produk ke database
 
-        return redirect()->back()->with('successMessage', 'Data produk berhasil disimpan');
+        return redirect()->route('products.index')->with('success', 'Produk berhasil disimpan');
+
     }
 
+    // menampilkan detail produk
     public function show(string $id)
     {
         $product = Product::findOrFail($id);
-        return view('dashboard.products.show', compact('product'));
+        return view('products.show', compact('product'));
     }
 
+    
+    // menampilkan form edit produk
     public function edit(string $id)
     {
         $product = Product::findOrFail($id);
-        return view('dashboard.products.edit', compact('product'));
+        $categories = Categories::all();
+        return view('dashboard.products.edit', compact('product', 'categories'));
     }
-
+    // memperbarui data produk
     public function update(Request $request, string $id)
-    {
-        $product = Product::findOrFail($id);
+{
+    $product = Product::findOrFail($id);
 
-        $validator = \Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'slug' => 'required|string|max:255|unique:products,slug,' . $product->id,
-            'description' => 'nullable|string',
-            'sku' => 'required|string|max:50|unique:products,sku,' . $product->id,
-            'price' => 'required|numeric|min:0',
-            'stock' => 'required|integer|min:0',
-            'product_category_id' => 'nullable|exists:product_categories,id',
-            'image' => 'nullable|image|max:2048',
-            'is_active' => 'boolean'
-        ]);
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'slug' => 'required|string|unique:products,slug,' . $product->id . '|max:255',
+        'sku' => 'nullable|string|max:100',
+        'description' => 'nullable|string',
+        'price' => 'required|numeric',
+        'stock' => 'required|integer',
+        'product_category_id' => 'required|exists:product_categories,id',
+        'image' => 'nullable|image|mimes:jpg,jpeg,png,gif|max:2048',
+    ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput()
-                ->with('errorMessage', 'Validasi Error, Silahkan lengkapi data terlebih dahulu');
+    if ($request->hasFile('image')) {
+        if ($product->image_url) {
+            Storage::delete('public/' . $product->image_url);
         }
 
-        $product->fill($request->only([
-            'name', 'slug', 'description', 'sku', 'price',
-            'stock', 'product_category_id', 'is_active'
-        ]));
-
-        if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $imageName = time() . '_' . $image->getClientOriginalName();
-            $imagePath = $image->storeAs('uploads/products', $imageName, 'public');
-            $product->image_url = $imagePath;
-        }
-
-        $product->save();
-
-        return redirect()->back()->with('successMessage', 'Data produk berhasil diperbarui');
+        $imagePath = $request->file('image')->store('images/products', 'public');
+        $validated['image_url'] = $imagePath;
     }
 
+    $product->update($validated);
+
+    return redirect()->route('products.index')->with('success', 'Produk berhasil diperbarui');
+}
+
+    // menghapus produk
     public function destroy(string $id)
     {
         $product = Product::findOrFail($id);
         $product->delete();
 
-        return redirect()->back()->with('successMessage', 'Data produk berhasil dihapus');
+        return redirect()->back()->with('success', 'Data produk berhasil dihapus');
     }
 
     public function publicView($slug)
     {
-        // Kalau slug ini adalah kategori, kamu bisa filter berdasarkan kategori
-        $products = Product::where('slug', $slug)->get(); // atau bisa pakai all() kalau slug bukan dari produk
+        $products = Product::where('slug', $slug)->get();
         return view('products.show', compact('slug', 'products'));
     }
 
